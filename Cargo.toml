@@ -6,9 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-toml = "0.7.3"
 
-#[Egui]
+toml_edit = "0.19.8"
+
+# Egui 
 egui_extras = { version = "0.21.0", features = ["image"] }
 eframe = { version = "0.21.0" }
 egui = { version = "0.21.0" }
@@ -18,3 +19,9 @@ serde = "1.0.160"
 
 [Serde.MOre]
 breaker = "The breaker was here"
+
+[Serde.MOre.Again]
+breaker = "Again The breaker was here."
+
+
+
