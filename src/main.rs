@@ -1,9 +1,9 @@
-use core::panic;
-use std::fs;
-
 use egui::Ui;
-
+use std::collections::BTreeMap;
+use std::fs;
+use toml_edit::Value;
 use toml_edit::{Document, Table};
+
 fn sudo_main() {
     let options = eframe::NativeOptions::default();
     eframe::run_native(
@@ -13,7 +13,10 @@ fn sudo_main() {
     )
     .unwrap();
 }
-use std::collections::BTreeMap;
+
+fn main() {
+    sudo_main();
+}
 struct ConfigUi {
     file: Document,
     buffer: Document,
@@ -45,27 +48,22 @@ impl Default for ConfigUi {
         }
     }
 }
-fn spacer(ui: &mut Ui, amount: i32) {
-    for _ in 0..amount {
-        ui.label("");
-    }
-}
 
 impl eframe::App for ConfigUi {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             //true_loop(&mut self.file, ui);
-            for (keyu, (key, value)) in self.file.iter().enumerate() {
-                println!("happen");
-                ui.label(key);
-                if value.is_table() {
-                    recur("".to_string(), value.as_table().unwrap(), ui);
-                } else {
-                    let text = format!("{}\t\t type: {}", value.to_string(), value.type_name());
-                    ui.label(text);
-                }
-                println!("keyu: {}", keyu);
-            }
+            // for (keyu, (key, value)) in self.file.iter().enumerate() {
+            //     println!("happen");
+            //     ui.label(key);
+            //     if value.is_table() {
+            //         recur("".to_string(), value.as_table().unwrap(), ui);
+            //     } else {
+            //         let text = format!("{}\t\t type: {}", value.to_string(), value.type_name());
+            //         ui.label(text);
+            //     }
+            //     println!("keyu: {}", keyu);
+            // }
 
             spacer(ui, 5);
 
@@ -79,40 +77,6 @@ impl eframe::App for ConfigUi {
         });
     }
 }
-
-fn fake_iter(reff: &mut Document, ui: &mut Ui) {
-    reff.iter().for_each(|(key, thing)| {
-        ui.label(format!("{}", key));
-        ui.label(format!("{}", thing.to_string()));
-        if thing.is_table() {
-            //for thingy in thing.as_table().iter() {
-            //    ui.label(format!("Execute: |{}|", thingy));
-            //}
-            let mut keys = Vec::new();
-            thing.as_table().unwrap().iter().for_each(|(key, _value)| {
-                keys.push(key);
-            });
-
-            if thing.to_string().contains("serde") {
-                ui.label(format!(
-                    "ELEVATE: <{}\nkeys amount...{:?}",
-                    thing["MOre"], keys,
-                ));
-            }
-        }
-        //spacer(ui, 2);
-    });
-}
-
-fn true_loop(file: &mut Document, ui: &mut Ui) {
-    file.iter().for_each(|(key, value)| {
-        let text = format!("{} = \"{}\"", key, value);
-        ui.label(text);
-        spacer(ui, 3);
-    });
-}
-
-use toml_edit::{InlineTable, Value};
 
 fn recur_by_value(value: &Value, options: &mut BTreeMap<String, ()>) {
     match value {
@@ -237,12 +201,10 @@ fn recur_all_things(item: &mut Item, options: &mut BTreeMap<String, ()>, ui: &mu
         }
         Item::Table(table) => {
             for (k, v) in table.iter_mut() {
-                ui.vertical(|ui| {
-                    ui.label(k.to_string());
-                    ui.horizontal(|ui| {
-                        recur_all_things(v, options, ui);
-                    });
-                });
+                // ui.horizontal(|ui| {
+                ui.label(k.to_string());
+                recur_all_things(v, options, ui);
+                // });
             }
         }
         Item::ArrayOfTables(array_of_tables) => {
@@ -310,37 +272,6 @@ fn recur_all_things_push_string(item: &Item, options: &mut BTreeMap<String, ()>)
 //    }
 //}
 
-fn recur(tab_level: String, table: &Table, ui: &mut Ui) {
-    for (keyu, (key, value)) in table.iter().enumerate() {
-        if value.is_table() {
-            let nest = format!("{}Nest: |{}|\n", tab_level, key);
-            println!("if true : {}", nest);
-            ui.label(nest);
-
-            let tab_level = format!("{}{}", "\t", tab_level);
-            let new_table = value.as_table().unwrap();
-            recur(tab_level, new_table, ui);
-        } else {
-            let the_type = format!("\t\ttype: <{}>", value.type_name());
-            let mut text = format!("{}|{} = {}{}", tab_level, key, value, the_type);
-            if value.type_name() == "inline table" {
-                let mut keys = Vec::new();
-                value.as_inline_table().unwrap().iter().for_each(|(k, v)| {
-                    let mut kmut = k.to_owned();
-                    ui.horizontal(|ui| {
-                        ui.label(format!("AUDIT: {}", k));
-                        ui.add(egui::TextEdit::singleline(&mut kmut));
-                    });
-                    keys.push(k);
-                });
-                text.push_str(&format!("\t\t{:?}", keys));
-            }
-            ui.label(text);
-        }
-        println!("---------------------->keyu recur!|{}|{}|", keyu, key);
-    }
-}
-
 fn recur_mut2(
     ConfigUi {
         file,
@@ -352,27 +283,47 @@ fn recur_mut2(
     ui: &mut Ui,
 ) {
     for (k, item) in buffer.iter_mut() {
+        ui.label(k.to_string());
         recur_all_things(item, options, ui);
     }
 }
 
-fn recur_mut(tab_level: String, table: &mut Table, buffer: &mut Table, ui: &mut Ui) {
-    for (keydex, (key, magical_thing)) in buffer.iter_mut().enumerate() {
-        // If its a table, reem through it with recursion (may have many nested tables)
-        if magical_thing.is_table() {
-            // Tab Level is for easier viewing when it is displayed in a ui.label. The more tabs the deeper the nest!
-            let tab_level = format!("{}{}", tab_level, "\t");
-
-            // get the next level of nested variables to pass to recur_mut()
-            let table = table.get_mut(&key).unwrap().as_table_mut().unwrap();
-            let magical_thing = magical_thing.as_table_mut().unwrap();
-
-            // Go one level deeper!
-            recur_mut(tab_level, table, magical_thing, ui);
-        } else {
-        }
-    }
+fn filer() -> Document {
+    let toml = fs::read_to_string("Cargo.toml").unwrap();
+    toml.parse::<Document>().unwrap()
 }
+
+// fn fake_iter(reff: &mut Document, ui: &mut Ui) {
+//     reff.iter().for_each(|(key, thing)| {
+//         ui.label(format!("{}", key));
+//         ui.label(format!("{}", thing.to_string()));
+//         if thing.is_table() {
+//             //for thingy in thing.as_table().iter() {
+//             //    ui.label(format!("Execute: |{}|", thingy));
+//             //}
+//             let mut keys = Vec::new();
+//             thing.as_table().unwrap().iter().for_each(|(key, _value)| {
+//                 keys.push(key);
+//             });
+//
+//             if thing.to_string().contains("serde") {
+//                 ui.label(format!(
+//                     "ELEVATE: <{}\nkeys amount...{:?}",
+//                     thing["MOre"], keys,
+//                 ));
+//             }
+//         }
+//         //spacer(ui, 2);
+//     });
+// }
+//
+// fn true_loop(file: &mut Document, ui: &mut Ui) {
+//     file.iter().for_each(|(key, value)| {
+//         let text = format!("{} = \"{}\"", key, value);
+//         ui.label(text);
+//         spacer(ui, 3);
+//     });
+// }
 
 //fn recur_ui(tab_lvl: String, table: &mut Map<String, toml::Value>, ui: &mut Ui) {
 //    for (key, value) in table {
@@ -407,10 +358,39 @@ fn recur_mut(tab_level: String, table: &mut Table, buffer: &mut Table, ui: &mut 
 //    }
 //}
 
-fn filer() -> Document {
-    let toml = fs::read_to_string("Cargo.toml").unwrap();
-    toml.parse::<Document>().unwrap()
+fn spacer(ui: &mut Ui, amount: i32) {
+    for _ in 0..amount {
+        ui.label("");
+    }
 }
-fn main() {
-    sudo_main();
-}
+
+// fn recur(tab_level: String, table: &Table, ui: &mut Ui) {
+//     for (keyu, (key, value)) in table.iter().enumerate() {
+//         if value.is_table() {
+//             let nest = format!("{}Nest: |{}|\n", tab_level, key);
+//             println!("if true : {}", nest);
+//             ui.label(nest);
+//
+//             let tab_level = format!("{}{}", "\t", tab_level);
+//             let new_table = value.as_table().unwrap();
+//             recur(tab_level, new_table, ui);
+//         } else {
+//             let the_type = format!("\t\ttype: <{}>", value.type_name());
+//             let mut text = format!("{}|{} = {}{}", tab_level, key, value, the_type);
+//             if value.type_name() == "inline table" {
+//                 let mut keys = Vec::new();
+//                 value.as_inline_table().unwrap().iter().for_each(|(k, v)| {
+//                     let mut kmut = k.to_owned();
+//                     ui.horizontal(|ui| {
+//                         ui.label(format!("AUDIT: {}", k));
+//                         ui.add(egui::TextEdit::singleline(&mut kmut));
+//                     });
+//                     keys.push(k);
+//                 });
+//                 text.push_str(&format!("\t\t{:?}", keys));
+//             }
+//             ui.label(text);
+//         }
+//         println!("---------------------->keyu recur!|{}|{}|", keyu, key);
+//     }
+// }
