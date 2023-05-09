@@ -25,5 +25,7 @@ breaker = "The breaker was here"
 [Serde.MOre.Again]
 breaker = "Again The breaker was here."
 
+breaking = { version = "1.2.3", features = ["one", "two", "three"] }
+
 
 

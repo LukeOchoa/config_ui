@@ -22,6 +22,7 @@ struct ConfigUi {
     buffer: Document,
     manual_mutation: bool,
     options: BTreeMap<String, ()>,
+    save: bool,
 }
 
 impl ConfigUi {}
@@ -40,11 +41,13 @@ impl Default for ConfigUi {
         let buffer = file.clone();
         let manual_mutation = true;
         let options = get_options(&file);
+        let save = bool::default();
         Self {
             file,
             buffer,
             manual_mutation,
             options,
+            save,
         }
     }
 }
@@ -71,7 +74,21 @@ impl eframe::App for ConfigUi {
             //     //ui.label(format!("{:?}", self.options));
             // });
             // ui.label(string);
-            recur_mut2(self, "".to_string(), ui);
+            if !self.save {
+                if ui.button("Save").clicked() {
+                    self.save = true;
+                }
+                recur_mut2(self, "".to_string(), ui);
+            } else {
+                ui.label("Are you sure you want to save");
+                if ui.button("Yes").clicked() {
+                    self.save = false;
+                    panic!("DONE");
+                }
+                if ui.button("No").clicked() {
+                    self.save = false;
+                }
+            }
         });
     }
 }
@@ -141,6 +158,11 @@ fn text_sizer(len: i32) -> f32 {
     len as f32 * current_strength
 }
 
+fn to_bold(string: impl ToString) -> egui::RichText {
+    let string = string.to_string();
+    egui::RichText::strong(egui::RichText::new(string))
+}
+
 use toml_edit::Formatted;
 fn recur_by_value_mut(value: &mut Value, options: &BTreeMap<String, ()>, ui: &mut Ui) {
     match value {
@@ -173,19 +195,23 @@ fn recur_by_value_mut(value: &mut Value, options: &BTreeMap<String, ()>, ui: &mu
         }
         Value::Array(array) => {
             // ui.horizontal(|ui| {
+            ui.label("[");
             for v in array.iter_mut() {
                 //recur_all_things_push_string(v, options);
                 recur_by_value_mut(v, options, ui);
             }
+            ui.label("]");
             // });
         }
         Value::InlineTable(inline_table) => {
             //ui.horizontal(|ui| {
+            ui.label(" {");
             for (k, v) in inline_table.iter_mut() {
                 //recur_all_things_push_string(v, options);
                 ui.label(k.to_string());
                 recur_by_value_mut(v, options, ui);
             }
+            ui.label("}");
             // });
         }
     }
@@ -207,6 +233,11 @@ fn count_new_lines_and_make_string(string: String) -> i32 {
 
 fn get_not_the_key(decor: &Decor) -> Option<&str> {
     decor.prefix()?.as_str()
+}
+
+fn to_underline(string: impl ToString) -> egui::RichText {
+    let string = egui::RichText::new(string.to_string());
+    egui::RichText::underline(string)
 }
 
 fn recur_all_things(item: &mut Item, options: &mut BTreeMap<String, ()>, ui: &mut Ui) {
@@ -244,6 +275,7 @@ fn recur_all_things(item: &mut Item, options: &mut BTreeMap<String, ()>, ui: &mu
                     }
                     ui.horizontal(|ui| {
                         ui.label(newkey);
+                        ui.label("=");
                         recur_all_things(v, options, ui);
                     });
 
@@ -261,7 +293,7 @@ fn recur_all_things(item: &mut Item, options: &mut BTreeMap<String, ()>, ui: &mu
                     //    });
                     //}
                 } else {
-                    ui.label(k.to_string());
+                    ui.label(to_underline(k.to_string()));
                     recur_all_things(v, options, ui);
                 }
                 // });
@@ -315,6 +347,7 @@ fn recur_mut2(
         buffer,
         manual_mutation,
         options,
+        save,
     }: &mut ConfigUi,
     mut tab_level: String,
     ui: &mut Ui,
