@@ -83,7 +83,8 @@ impl eframe::App for ConfigUi {
                 ui.label("Are you sure you want to save");
                 if ui.button("Yes").clicked() {
                     self.save = false;
-                    panic!("DONE");
+                    true_save(self);
+                    panic!("Success ------------------>");
                 }
                 if ui.button("No").clicked() {
                     self.save = false;
@@ -91,6 +92,15 @@ impl eframe::App for ConfigUi {
             }
         });
     }
+}
+
+// let toml = fs::read_to_string("Cargo.toml").unwrap();
+// toml.parse::<Document>().unwrap()
+use std::io::Write;
+fn true_save(config_ui: &mut ConfigUi) {
+    let raw = config_ui.buffer.to_string();
+    let mut file = std::fs::File::create("Cargo.toml.bak").unwrap();
+    file.write_all(raw.as_bytes()).unwrap();
 }
 
 fn recur_by_value(value: &Value, options: &mut BTreeMap<String, ()>) {
