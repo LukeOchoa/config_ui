@@ -1,7 +1,7 @@
 use egui::Ui;
 use std::collections::BTreeMap;
 use std::fs;
-use toml_edit::Value;
+use toml_edit::{Decor, Value};
 use toml_edit::{Document, Table};
 
 fn sudo_main() {
@@ -64,8 +64,6 @@ impl eframe::App for ConfigUi {
             //     }
             //     println!("keyu: {}", keyu);
             // }
-
-            spacer(ui, 5);
 
             // let mut string = String::default();
             // self.options.iter().for_each(|(k, _)| {
@@ -142,6 +140,7 @@ fn text_sizer(len: i32) -> f32 {
     // It scales by every (power) amount of characters [currently at the time of writing, its 5 chars]
     len as f32 * current_strength
 }
+
 use toml_edit::Formatted;
 fn recur_by_value_mut(value: &mut Value, options: &BTreeMap<String, ()>, ui: &mut Ui) {
     match value {
@@ -173,24 +172,41 @@ fn recur_by_value_mut(value: &mut Value, options: &BTreeMap<String, ()>, ui: &mu
             //
         }
         Value::Array(array) => {
-            ui.horizontal(|ui| {
-                for v in array.iter_mut() {
-                    //recur_all_things_push_string(v, options);
-
-                    recur_by_value_mut(v, options, ui);
-                }
-            });
+            // ui.horizontal(|ui| {
+            for v in array.iter_mut() {
+                //recur_all_things_push_string(v, options);
+                recur_by_value_mut(v, options, ui);
+            }
+            // });
         }
         Value::InlineTable(inline_table) => {
-            ui.horizontal(|ui| {
-                for (k, v) in inline_table.iter_mut() {
-                    //recur_all_things_push_string(v, options);
-                    ui.label(k.to_string());
-                    recur_by_value_mut(v, options, ui);
-                }
-            });
+            //ui.horizontal(|ui| {
+            for (k, v) in inline_table.iter_mut() {
+                //recur_all_things_push_string(v, options);
+                ui.label(k.to_string());
+                recur_by_value_mut(v, options, ui);
+            }
+            // });
         }
     }
+}
+
+fn proper_spacing() {}
+
+fn get_key() {}
+
+fn count_new_lines_and_make_string(string: String) -> i32 {
+    let mut count = i32::default();
+    for ch in string.chars() {
+        if ch == '\n' {
+            count += 1;
+        }
+    }
+    count
+}
+
+fn get_not_the_key(decor: &Decor) -> Option<&str> {
+    decor.prefix()?.as_str()
 }
 
 fn recur_all_things(item: &mut Item, options: &mut BTreeMap<String, ()>, ui: &mut Ui) {
@@ -202,8 +218,52 @@ fn recur_all_things(item: &mut Item, options: &mut BTreeMap<String, ()>, ui: &mu
         Item::Table(table) => {
             for (k, v) in table.iter_mut() {
                 // ui.horizontal(|ui| {
-                ui.label(k.to_string());
-                recur_all_things(v, options, ui);
+                //
+                // let key = k.get(); //k.to_string();
+
+                // Remove the actual key from the string
+                let key = k.to_string();
+
+                // Whatever space there is before the key, comments, etc...; GET. THAT.
+                let not_the_key = get_not_the_key(k.decor());
+
+                // Count how many spaces there should be
+                let count = count_new_lines_and_make_string(key);
+                let newkey = k.get();
+                if v.is_str() || v.is_inline_table() {
+                    //spacer(ui, count);
+                    spacer(ui, count);
+                    if let Some(string) = not_the_key {
+                        //if string != "" || !string.contains('\n') || string != " " {
+                        if string != "" && string != "\n" {
+                            //let magic = if string == "" { "yes" } else { "nope" };
+                            //let string =
+                            //    format!("{}{}<{}>{}", string, "it happened", string, magic);
+                            ui.label(string);
+                        }
+                    }
+                    ui.horizontal(|ui| {
+                        ui.label(newkey);
+                        recur_all_things(v, options, ui);
+                    });
+
+                    //if count > 0 {
+                    //    spacer(ui, count);
+                    //    ui.horizontal(|ui| {
+                    //        ui.label(format!("<{}>", newkey));
+                    //    });
+                    //} else {
+                    //    ui.horizontal(|ui| {
+                    //        // k.to_string().replace("\n", "")
+                    //        ui.label(newkey);
+                    //        // ui.label(format!("test -> {}", k.to_string()));
+                    //        recur_all_things(v, options, ui);
+                    //    });
+                    //}
+                } else {
+                    ui.label(k.to_string());
+                    recur_all_things(v, options, ui);
+                }
                 // });
             }
         }
@@ -226,6 +286,7 @@ fn recur_by_table(table: &Table, options: &mut BTreeMap<String, ()>) {
         recur_all_things_push_string(item, options);
     }
 }
+
 use toml_edit::Item;
 fn recur_all_things_push_string(item: &Item, options: &mut BTreeMap<String, ()>) {
     match item {
@@ -244,34 +305,10 @@ fn recur_all_things_push_string(item: &Item, options: &mut BTreeMap<String, ()>)
     }
 }
 
-// Value::String(..) => "string",
-// Value::Integer(..) => "integer",
-// Value::Float(..) => "float",
-// Value::Boolean(..) => "boolean",
-// Value::Datetime(..) => "datetime",
-// Value::Array(..) => "array",
-// Value::InlineTable(..) => "inline table",
-
-//fn recur_for_options(ptions: &mut BTreeMap<String, ()>) {
-//    for (key, value) in table.iter() {
-//        if value.is_table() {
-//            recur_for_options(value.as_table().unwrap(), options);
-//        } else {
-//            //options.insert(value.to_owned(), ());
-//            match value.type_name() {
-//                "inline table" => {
-//                    inline_table_values(&value.as_inline_table().unwrap())
-//                        .iter()
-//                        .for_each(|string| options.insert(string.to_owned(), ()).unwrap());
-//                }
-//                _ => {
-//                    options.insert(value.to_string(), ());
-//                }
-//            }
-//        }
-//    }
-//}
-
+fn to_green(string: impl ToString) -> egui::RichText {
+    let string = string.to_string();
+    egui::RichText::new(string).color(egui::Color32::GREEN)
+}
 fn recur_mut2(
     ConfigUi {
         file,
@@ -283,8 +320,12 @@ fn recur_mut2(
     ui: &mut Ui,
 ) {
     for (k, item) in buffer.iter_mut() {
-        ui.label(k.to_string());
+        ui.label(to_green(format!("<|Table Start")));
+        let rich_text = egui::RichText::new(k.to_string()).color(egui::Color32::RED);
+        ui.label(rich_text);
         recur_all_things(item, options, ui);
+        ui.label(to_green("Table End|>"));
+        ui.label("");
     }
 }
 
@@ -394,3 +435,31 @@ fn spacer(ui: &mut Ui, amount: i32) {
 //         println!("---------------------->keyu recur!|{}|{}|", keyu, key);
 //     }
 // }
+
+// Value::String(..) => "string",
+// Value::Integer(..) => "integer",
+// Value::Float(..) => "float",
+// Value::Boolean(..) => "boolean",
+// Value::Datetime(..) => "datetime",
+// Value::Array(..) => "array",
+// Value::InlineTable(..) => "inline table",
+
+//fn recur_for_options(ptions: &mut BTreeMap<String, ()>) {
+//    for (key, value) in table.iter() {
+//        if value.is_table() {
+//            recur_for_options(value.as_table().unwrap(), options);
+//        } else {
+//            //options.insert(value.to_owned(), ());
+//            match value.type_name() {
+//                "inline table" => {
+//                    inline_table_values(&value.as_inline_table().unwrap())
+//                        .iter()
+//                        .for_each(|string| options.insert(string.to_owned(), ()).unwrap());
+//                }
+//                _ => {
+//                    options.insert(value.to_string(), ());
+//                }
+//            }
+//        }
+//    }
+//}
